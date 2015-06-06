@@ -1,4 +1,4 @@
-import json, urllib
+import json, urllib, os
 from optparse import OptionParser
 
 parser = OptionParser()
@@ -6,20 +6,32 @@ parser.add_option("-f", "--file", dest="filename", help="input filename", metava
 parser.add_option("-s", "--start", dest="start", default=False, help="projet name to start at")
 parser.add_option("-e", "--end", dest="end", default=False, help="projet name to end at")
 parser.add_option("-o", "--out", dest="out", help="output file")
+parser.add_option("-l", "--log", dest="jsonlogdir", help="JSON log directory, for caching replies")
+parser.add_option("-i", "--ignorelocal", action="store_true", dest="ignorelocal", default=False, help="ignore the local JSON log")
+
 
 (options, args) = parser.parse_args()
 
+
+class IgnoreExecption(Exception):
+    pass
 
 class sourceforge:
 
     def __init__(self,project):
         try:
-            jsonreply = open("json/"+project+".json").read()
+            if options.ignorelocal:
+                raise IgnoreExecption('Ignoring')
+            jsonreply = open(options.jsonlogdir+"/"+project+".json").read()
         except IOError:
             print 'Unable to open log, checking online for '+project
             jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
-            with open("json/"+project+".json",'w') as jsonlog:
-                jsonlog.write(jsonreply+"\n")
+            if not options.ignorelocal and os.path.isdir(options.jsonlogdir):
+                with open(options.jsonlogdir+"/"+project+".json",'w') as jsonlog:
+                    jsonlog.write(jsonreply+"\n")
+        except IgnoreExecption:
+            print 'Ignoring log, checking online for '+project
+            jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
         try:
             self.item = json.loads(jsonreply)
             print "Loaded "+project+" in status: "+self.item['status']
@@ -47,6 +59,10 @@ class sourceforge:
                     outfile.write("rsync -av "+project+".bzr.sourceforge.net::bzrroot/"+project+"/* .")
         except AttributeError:
             print "Couldn't get SCM"
+
+if not options.jsonlogdir:
+    print "You did not specify a JSON log directory, ignoring and won't cache any replies"
+    options.ignorelocal = True
 
 if not options.out:
     print "You did not specify an output file, I don't know where to go..."
