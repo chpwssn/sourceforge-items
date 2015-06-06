@@ -60,7 +60,7 @@ class sourceforge:
                 
     def load(self, path, page=1, limit=100):
         urlpath=self.project+("/"+path if path else "")
-        assert urlpath[:2].isalnum()
+        #assert urlpath[:2].isalnum()
         baselogdir = options.jsonlogdir+"/"+urlpath[:2].lower()
         logpath=baselogdir+"/"+urlpath.replace('/','_')+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
