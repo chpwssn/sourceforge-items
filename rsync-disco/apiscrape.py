@@ -13,6 +13,11 @@ parser.add_option("-a", "--actions", dest="actions", help="comma separated list 
 
 (options, args) = parser.parse_args()
 
+def startAndEndSuffix():
+    return ("_S_%s" % options.start if options.start else "")+("_E_%s" % options.end if options.end else "")
+def pageAndLimitSuffix(page, limit):
+    return ("_P%d" % page if page != 1 else "")+("_L%d" % limit if limit != 100 else "")
+
 if not options.jsonlogdir:
     print "You did not specify a JSON log directory, ignoring and won't cache any replies"
     options.ignorelocal = True
@@ -30,18 +35,17 @@ elif options.actions == 'none':
 else:
     actions = options.actions.split(",")
 
-if not options.out:
-    #TODO: Generate output file name based on input file name and actions
-    options.out = os.path.basename(options.filename)+"-"+('-'.join(actions))
+if not options.out and actions:
+    options.out = os.path.basename(options.filename)+"-"+('-'.join(actions))+startAndEndSuffix()
     print 'No outfile specified, using '+options.out
 
+outfile = None
 sums = {}
 
 class sourceforge:
 
-    def __init__(self,project, outfile):
+    def __init__(self,project):
         self.project=project
-        self.outfile=outfile
         self.item = self.load("")
         status = self.item.get('status')
         if status:
@@ -73,15 +77,18 @@ class sourceforge:
                 self.output("%s/%s: %d" % (self.project, tool['mount_point'], tracker['count']))
 
     def getStatusCounts(self):
-        # TODO: Make a count of projects in each status
-        pass
+        status = self.item.get('status','[unknown]')
+        sums.setdefault(status, 0)
+        sums[status] += 1
+
+    def finishStatusCounts(self):
+        self.output(`sums`)
 
     def load(self, path, page=1, limit=100):
-        #TODO: Handle cacheing of page & limit params, without breaking existing cache names...
         urlpath=self.project+("/"+path if path else "")
         #TODO: Make sure the first two chars of urlpath is an alnum or dash
         baselogdir = options.jsonlogdir+"/"+urlpath[:2].lower()
-        logpath=baselogdir+"/"+urlpath.replace('/','_')+".json"
+        logpath=baselogdir+"/"+urlpath.replace('/','_')+pageAndLimitSuffix(page, limit)+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
         if options.ignorelocal:
             print "Ignoring any caching, checking online for " + url
@@ -99,7 +106,7 @@ class sourceforge:
                     os.mkdir(baselogdir)
                 newreply = json.dumps(j, sort_keys=True)+"\n"
                 if jsonreply != newreply:
-                    print "Updating cache for "+urlpath
+                    print "Updating cache for "+logpath
                     with open(logpath,'w') as jsonlog:
                         jsonlog.write(newreply)
             return j
@@ -110,7 +117,10 @@ class sourceforge:
 
     def output(self, txt):
         print "Writing to output file: "+txt
-        self.outfile.write(txt+"\n")
+        global outfile
+        if not outfile:
+            outfile = open(options.out, 'w')
+        outfile.write(txt+"\n")
 
     def urlReq(self, url, retry=1):
         try:
@@ -133,28 +143,39 @@ class sourceforge:
             return "invalid JSON"
 
 
-startReached = False
-endReached = False
-with open(options.out,'w') as outfile:
-    with open(options.filename,'r') as infile:
-        if not options.start:
-            startReached = True;
-        lines = infile.read().splitlines()
-        length = len(lines)
-        for n in range(length):
-            line = lines[n]
+with open(options.filename,'r') as infile:
+    try:
+        startReached = not options.start
+        sites = []
+        for line in infile.read().splitlines():
             try:
                 site = line.split(':')[1]
-                if options.end:
-                    if options.end == site:
-                        endReached = True
-                if startReached and not endReached:
-                    print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
-                    test = sourceforge(site, outfile)
-                    if test.item:
-                        for x in actions:
-                            print 'Running get'+x+"()"
-                            getattr(test, "get"+x.strip())()
-            except IndexError as e:
-                print "Index Error! "+line
+            except ValueError as e:
+                print "missing colon in index file!"
                 raise e
+            if options.end and site.startswith(options.end):
+                break
+            if not startReached and site.startswith(options.start):
+                startReached = True
+            if startReached:
+                sites.append(site)
+
+        length = len(sites)
+        for n in range(length):
+            site = sites[n]
+            print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
+            test = sourceforge(site)
+            if test.item:
+                for x in actions:
+                    print 'Running get'+x+"()"
+                    getattr(test, "get"+x.strip())()
+
+        for x in actions:
+            finisher=getattr(test, "finish"+x.strip(), None)
+            if finisher:
+                print 'Running finish'+x+"()"
+                finisher()
+    finally:
+        if outfile:
+            outfile.close()
+
