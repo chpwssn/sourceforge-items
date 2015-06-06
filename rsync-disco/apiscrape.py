@@ -1,4 +1,4 @@
-import json, urllib, os
+import json, urllib, os, time
 from optparse import OptionParser
 
 parser = OptionParser()
@@ -86,12 +86,18 @@ class sourceforge:
         print txt
         self.outfile.write(txt+"\n")
         
-    def urlReq(self, url):
+    def urlReq(self, url, retry=1):
         try:
             u = urllib.urlopen(url)
             if u.code == 404:
                 print "404 Not Found for "+url
                 return "{}"
+            if u.code == 504:
+                print "504 Gateway Timeout for "+url
+                if retry>5:
+                    raise IOError("Too many retries!")
+                time.sleep(5)
+                return self.urlReq(url, retry+1)
             if u.code != 200:
                 raise IOError("Unexpected HTTP code: %d" % (u.code))
             return u.read()
