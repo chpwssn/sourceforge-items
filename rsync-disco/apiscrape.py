@@ -61,7 +61,7 @@ class sourceforge:
     def load(self, path, page=1, limit=100):
         urlpath=self.project+("/"+path if path else "")
         assert urlpath[:2].isalnum()
-        logpath=options.jsonlogdir+urlpath[:2].lower()+"/"+urlpath.replace('/','_')+".json"
+        logpath=options.jsonlogdir+"/"+urlpath[:2].lower()+"/"+urlpath.replace('/','_')+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
         if options.ignorelocal:
             print "Ignoring any caching, checking online for "+url
