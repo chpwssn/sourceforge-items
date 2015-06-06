@@ -11,20 +11,25 @@ parser.add_option("-o", "--out", dest="out", help="output file")
 
 
 class sourceforge:
-    
+
     def __init__(self,project):
         try:
+            jsonreply = open("json/"+project+".json").read()
+        except IOError:
+            print 'Unable to open log, checking online for '+project
             jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
             with open("json/"+project+".json",'w') as jsonlog:
                 jsonlog.write(jsonreply+"\n")
+        try:
             self.item = json.loads(jsonreply)
             print "Loaded "+project+" in status: "+self.item['status']
         except ValueError:
             print "JSON failed for "+project
+            self.item={}
 
     def getSCM(self,project,outfile):
         try:
-            for tool in self.item['tools']:
+            for tool in self.item.get('tools', []):
                 if tool['name'] == "git":
                     print "rsync -av git.code.sf.net::p/"+project+"/"+tool['mount_point']+".git ."
                     outfile.write("rsync:rsync -av git.code.sf.net::p/"+project+"/"+tool['mount_point']+".git .\n")
@@ -42,7 +47,6 @@ class sourceforge:
                     outfile.write("rsync -av "+project+".bzr.sourceforge.net::bzrroot/"+project+"/* .")
         except AttributeError:
             print "Couldn't get SCM"
-
 
 if not options.out:
     print "You did not specify an output file, I don't know where to go..."
