@@ -14,7 +14,10 @@ class sourceforge:
     
     def __init__(self,project):
         try:
-            self.item = json.loads(urllib.urlopen("http://sourceforge.net/rest/p/"+project).read())
+            jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
+            with open("json/"+project+".json",'w') as jsonlog:
+                jsonlog.write(jsonreply+"\n")
+            self.item = json.loads(jsonreply)
             print "Loaded "+project+" in status: "+self.item['status']
         except ValueError:
             print "JSON failed for "+project
