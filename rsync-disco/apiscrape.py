@@ -12,7 +12,9 @@ parser.add_option("-o", "--out", dest="out", help="output file")
 
 class sourceforge:
 
-    def __init__(self,project):
+    def __init__(self,project, outfile):
+        self.project=project
+        self.outfile=outfile
         try:
             jsonreply = open("json/"+project+".json").read()
         except IOError:
@@ -48,6 +50,32 @@ class sourceforge:
         except AttributeError:
             print "Couldn't get SCM"
 
+    def getTrackers(self):
+        for tool in self.item.get('tools',[]):
+            if tool['name'] == 'tickets':
+                tracker = self.load(tool['mount_point'], limit=1)
+                self.output("%s/%s: %d" % (self.project, tool['mount_point'], tracker['count']))
+                
+    def load(self, path, page=1, limit=100):
+        urlpath=self.project+("/"+path if path else "")
+        logpath="json/"+urlpath.replace('/','_')+".json"
+        try:
+            jsonreply = open(logpath).read()
+        except IOError:
+            print 'Unable to open json log, checking online for '+self.project+"/"+path
+            jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)).read()
+            with open(logpath,'w') as jsonlog:
+                jsonlog.write(jsonreply+"\n")
+        try:
+            return json.loads(jsonreply)
+        except ValueError:
+            print "JSON failed for "+self.project
+            return {}
+
+    def output(self, txt):
+        print txt
+        self.outfile.write(txt+"\n")
+        
 if not options.out:
     print "You did not specify an output file, I don't know where to go..."
     quit(1)
@@ -65,7 +93,7 @@ with open(options.out,'w') as outfile:
                     if options.end == site:
                         endReached = True
                 if startReached and not endReached:
-                    test = sourceforge(site)
-                    test.getSCM(site,outfile)
+                    test = sourceforge(site, outfile)
+                    test.getTrackers()
             except IndexError:
                 print "Index Error! "+line
