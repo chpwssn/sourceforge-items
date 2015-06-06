@@ -84,6 +84,22 @@ class sourceforge:
     def finishStatusCounts(self):
         self.output(`sums`)
 
+    def getByStatus(self):
+        if self.item.get('status','[unknown]') == args[0]:
+            self.output('project:'+self.project)
+
+    def getByStatusWithCreationDate(self):
+        if self.item.get('status','[unknown]') == args[0]:
+            self.output(self.item.get('creation_date', '??')+'\t'+self.project)
+
+    def getLabelCounts(self):
+        for label in self.item.get('labels',[]):
+            sums.setdefault(label, 0)
+            sums[label] += 1
+
+    def finishLabelCounts(self):
+        self.output('\n'.join("%d: %s" % (v, k) for (k, v) in sums.items()))
+
     def load(self, path, page=1, limit=100):
         urlpath=self.project+("/"+path if path else "")
         #TODO: Make sure the first two chars of urlpath is an alnum or dash
@@ -116,11 +132,12 @@ class sourceforge:
             return {}
 
     def output(self, txt):
-        print "Writing to output file: "+txt
+        enc_text = txt.encode('utf8', 'replace')
+        print "Writing to output file: "+enc_text
         global outfile
         if not outfile:
             outfile = open(options.out, 'w')
-        outfile.write(txt+"\n")
+        outfile.write(enc_text+"\n")
 
     def urlReq(self, url, retry=1):
         try:
