@@ -31,6 +31,12 @@ class sourceforge:
                 elif tool['name'] == "hg":
                     print "rsync -av hg.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
                     outfile.write("rsync:rsync -av hg.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
+                elif tool['name'] == "cvs":
+                    print "rsync -av cvs.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
+                    outfile.write("rsync -av cvs.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
+                elif tool['name'] == "bazaar":
+                    print "rsync -av bazaar.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
+                    outfile.write("rsync -av bazaar.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
         except AttributeError:
             print "Couldn't get SCM"
 
