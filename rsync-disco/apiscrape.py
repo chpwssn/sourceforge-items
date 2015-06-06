@@ -48,8 +48,9 @@ class sourceforge:
                     self.output("rsync -av rsync://"+self.project+".cvs.sourceforge.net/cvsroot/"+self.project+"/* .")
                 elif tool['name'] == "bzr":
                     self.output("rsync -av "+self.project+".bzr.sourceforge.net::bzrroot/"+self.project+"/* .")
-        except AttributeError:
+        except AttributeError as e:
             print "Couldn't get SCM"
+            raise e
 
     def getTrackers(self):
         for tool in self.item.get('tools',[]):
@@ -70,12 +71,15 @@ class sourceforge:
             except IOError:
                 print 'Unable to open json log, checking online for '+url
                 jsonreply = self.urlReq(url)
+        try:
+            j = json.loads(jsonreply)
+            if not options.ignorelocal:
                 with open(logpath,'w') as jsonlog:
                     jsonlog.write(jsonreply+"\n")
-        try:
-            return json.loads(jsonreply)
-        except ValueError:
+            return j
+        except ValueError as e:
             print "JSON failed for "+url
+            raise e
             return {}
 
     def output(self, txt):
@@ -84,10 +88,18 @@ class sourceforge:
         
     def urlReq(self, url):
         try:
-            return urllib.urlopen(url).read()
-        except IOError:
+            u = urllib.urlopen(url)
+            if u.code == 404:
+                print "404 Not Found for "+url
+                return "{}"
+            if u.code != 200:
+                raise IOError("Unexpected HTTP code: %d" % (u.code))
+            return u.read()
+        except IOError as e:
             print "urlopen failed for "+url
+            raise e
             return "invalid JSON"
+
 
 startReached = False
 endReached = False
@@ -103,8 +115,10 @@ with open(options.out,'w') as outfile:
                         endReached = True
                 if startReached and not endReached:
                     test = sourceforge(site, outfile)
-                    for x in options.actions.split(","):
-                        print 'Running get'+x+"()"
-                        getattr(test, "get"+x.strip())()
-            except IndexError:
+                    if test.item:
+                        for x in options.actions.split(","):
+                            print 'Running get'+x+"()"
+                            getattr(test, "get"+x.strip())()
+            except IndexError as e:
                 print "Index Error! "+line
+                raise e
