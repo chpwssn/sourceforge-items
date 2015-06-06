@@ -75,7 +75,7 @@ class sourceforge:
             j = json.loads(jsonreply)
             if not options.ignorelocal:
                 with open(logpath,'w') as jsonlog:
-                    jsonlog.write(jsonreply+"\n")
+                    jsonlog.write(json.dumps(j)+"\n")
             return j
         except ValueError as e:
             print "JSON failed for "+url
