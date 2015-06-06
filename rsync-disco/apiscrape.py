@@ -30,18 +30,18 @@ elif options.actions == 'none':
 else:
     actions = options.actions.split(",")
 
-if not options.out:
+if not options.out and actions:
     #TODO: Generate output file name based on input file name and actions
     options.out = os.path.basename(options.filename)+"-"+('-'.join(actions))
     print 'No outfile specified, using '+options.out
 
+outfile = None
 sums = {}
 
 class sourceforge:
 
-    def __init__(self,project, outfile):
+    def __init__(self,project):
         self.project=project
-        self.outfile=outfile
         self.item = self.load("")
         status = self.item.get('status')
         if status:
@@ -74,7 +74,12 @@ class sourceforge:
 
     def getStatusCounts(self):
         # TODO: Make a count of projects in each status
-        pass
+        status = self.item.get('status','[unknown]')
+        sums.setdefault(status, 0)
+        sums[status] += 1
+
+    def finishStatusCounts(self):
+        self.output(`sums`)
 
     def load(self, path, page=1, limit=100):
         #TODO: Handle cacheing of page & limit params, without breaking existing cache names...
@@ -110,7 +115,10 @@ class sourceforge:
 
     def output(self, txt):
         print "Writing to output file: "+txt
-        self.outfile.write(txt+"\n")
+        global outfile
+        if not outfile:
+            outfile = open(options.out, 'w')
+        outfile.write(txt+"\n")
 
     def urlReq(self, url, retry=1):
         try:
@@ -133,28 +141,39 @@ class sourceforge:
             return "invalid JSON"
 
 
-startReached = False
-endReached = False
-with open(options.out,'w') as outfile:
-    with open(options.filename,'r') as infile:
-        if not options.start:
-            startReached = True;
-        lines = infile.read().splitlines()
-        length = len(lines)
-        for n in range(length):
-            line = lines[n]
+with open(options.filename,'r') as infile:
+    try:
+        startReached = not options.start
+        sites = []
+        for line in infile.read().splitlines():
             try:
                 site = line.split(':')[1]
-                if options.end:
-                    if options.end == site:
-                        endReached = True
-                if startReached and not endReached:
-                    print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
-                    test = sourceforge(site, outfile)
-                    if test.item:
-                        for x in actions:
-                            print 'Running get'+x+"()"
-                            getattr(test, "get"+x.strip())()
-            except IndexError as e:
-                print "Index Error! "+line
+            except ValueError as e:
+                print "missing colon in index file!"
                 raise e
+            if options.end and site.startswith(options.end):
+                break
+            if not startReached and site.startswith(options.start):
+                startReached = True
+            if startReached:
+                sites.append(site)
+
+        length = len(sites)
+        for n in range(length):
+            site = sites[n]
+            print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
+            test = sourceforge(site)
+            if test.item:
+                for x in actions:
+                    print 'Running get'+x+"()"
+                    getattr(test, "get"+x.strip())()
+
+        for x in actions:
+            finisher=getattr(test, "finish"+x.strip())
+            if finisher:
+                print 'Running finish'+x+"()"
+                finisher()
+    finally:
+        if outfile:
+            outfile.close()
+
