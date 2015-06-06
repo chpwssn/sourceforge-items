@@ -84,7 +84,7 @@ class sourceforge:
         logpath=baselogdir+"/"+urlpath.replace('/','_')+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
         if options.ignorelocal:
-            print "Ignoring any caching, checking online for "+url
+            print "Ignoring any caching, checking online for " + url
             jsonreply = self.urlReq(url)
         else:
             try:
@@ -109,7 +109,7 @@ class sourceforge:
             return {}
 
     def output(self, txt):
-        print txt
+        print "Writing to output file: "+txt
         self.outfile.write(txt+"\n")
 
     def urlReq(self, url, retry=1):
@@ -139,13 +139,17 @@ with open(options.out,'w') as outfile:
     with open(options.filename,'r') as infile:
         if not options.start:
             startReached = True;
-        for line in infile.read().splitlines():
+        lines = infile.read().splitlines()
+        length = len(lines)
+        for n in range(length):
+            line = lines[n]
             try:
                 site = line.split(':')[1]
                 if options.end:
                     if options.end == site:
                         endReached = True
                 if startReached and not endReached:
+                    print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
                     test = sourceforge(site, outfile)
                     if test.item:
                         for x in actions:
