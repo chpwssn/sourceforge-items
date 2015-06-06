@@ -25,13 +25,13 @@ class sourceforge:
             jsonreply = open(options.jsonlogdir+"/"+project+".json").read()
         except IOError:
             print 'Unable to open log, checking online for '+project
-            jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
+            jsonreply = self.urlReq(project)
             if not options.ignorelocal and os.path.isdir(options.jsonlogdir):
                 with open(options.jsonlogdir+"/"+project+".json",'w') as jsonlog:
                     jsonlog.write(jsonreply+"\n")
         except IgnoreExecption:
             print 'Ignoring log, checking online for '+project
-            jsonreply = urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
+            jsonreply = self.urlReq(project)
         try:
             self.item = json.loads(jsonreply)
             print "Loaded "+project+" in status: "+self.item['status']
@@ -59,6 +59,9 @@ class sourceforge:
                     outfile.write("rsync -av "+project+".bzr.sourceforge.net::bzrroot/"+project+"/* .")
         except AttributeError:
             print "Couldn't get SCM"
+
+    def urlReq(self, project):
+        return urllib.urlopen("http://sourceforge.net/rest/p/"+project).read()
 
 if not options.jsonlogdir:
     print "You did not specify a JSON log directory, ignoring and won't cache any replies"
