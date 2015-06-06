@@ -7,7 +7,8 @@ parser.add_option("-s", "--start", dest="start", default=False, help="projet nam
 parser.add_option("-e", "--end", dest="end", default=False, help="projet name to end at")
 parser.add_option("-o", "--out", dest="out", help="output file")
 parser.add_option("-l", "--log", dest="jsonlogdir", help="JSON log directory, for caching replies")
-parser.add_option("-i", "--ignorelocal", action="store_true", dest="ignorelocal", default=False, help="ignore the local JSON log")
+parser.add_option("-i", "--ignorelocal", action="store_true", dest="ignorelocal", default=False, help="ignore the presence of any local JSON log")
+parser.add_option("-w", "--writecache", action="store_true", dest="writecache", default=False, help="write to the local JSON log")
 parser.add_option("-a", "--actions", dest="actions", help="comma separated list of data to extract")
 
 (options, args) = parser.parse_args()
@@ -15,13 +16,18 @@ parser.add_option("-a", "--actions", dest="actions", help="comma separated list 
 if not options.jsonlogdir:
     print "You did not specify a JSON log directory, ignoring and won't cache any replies"
     options.ignorelocal = True
+    options.writecache = False
 
 if not options.out:
+    #TODO: Generate output file name based on input file name and actions
     print "You did not specify an output file, I don't know where to go..."
     quit(1)
 
 if not options.actions:
+    print "Defaulting to running getSCM() only"
     options.actions = "SCM"
+
+sums = {}
 
 class sourceforge:
 
@@ -57,10 +63,14 @@ class sourceforge:
             if tool['name'] == 'tickets':
                 tracker = self.load(tool['mount_point'], limit=1)
                 self.output("%s/%s: %d" % (self.project, tool['mount_point'], tracker['count']))
-                
+
+    def getStatusCounts(self):
+        # TODO: Make a count of projects in each status
+        pass
+
     def load(self, path, page=1, limit=100):
+        #TODO: Handle cacheing of page & limit params, without breaking existing cache names...
         urlpath=self.project+("/"+path if path else "")
-        assert urlpath[:2].isalnum()
         baselogdir = options.jsonlogdir+"/"+urlpath[:2].lower()
         logpath=baselogdir+"/"+urlpath.replace('/','_')+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
@@ -75,11 +85,14 @@ class sourceforge:
                 jsonreply = self.urlReq(url)
         try:
             j = json.loads(jsonreply)
-            if not options.ignorelocal:
+            if options.writecache:
                 if not os.path.isdir(baselogdir):
                     os.mkdir(baselogdir)
-                with open(logpath,'w') as jsonlog:
-                    jsonlog.write(json.dumps(j)+"\n")
+                newreply = json.dumps(j)
+                if jsonreply != newreply:
+                    print "Updating cache for "+urlpath
+                    with open(logpath,'w') as jsonlog:
+                        jsonlog.write(json.dumps(j)+"\n")
             return j
         except ValueError as e:
             print "JSON failed for "+url
@@ -89,7 +102,7 @@ class sourceforge:
     def output(self, txt):
         print txt
         self.outfile.write(txt+"\n")
-        
+
     def urlReq(self, url, retry=1):
         try:
             u = urllib.urlopen(url)
