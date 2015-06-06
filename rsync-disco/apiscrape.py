@@ -32,8 +32,8 @@ else:
 
 if not options.out:
     #TODO: Generate output file name based on input file name and actions
-    print "You did not specify an output file, I don't know where to go..."
-    quit(1)
+    options.out = os.path.basename(options.filename)+"-"+('-'.join(actions))
+    print 'No outfile specified, using '+options.out
 
 sums = {}
 
