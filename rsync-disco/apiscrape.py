@@ -32,11 +32,11 @@ class sourceforge:
                     print "rsync -av hg.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
                     outfile.write("rsync:rsync -av hg.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
                 elif tool['name'] == "cvs":
-                    print "rsync -av cvs.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
-                    outfile.write("rsync -av cvs.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
-                elif tool['name'] == "bazaar":
-                    print "rsync -av bazaar.code.sf.net::p/"+project+"/"+tool['mount_point']+" ."
-                    outfile.write("rsync -av bazaar.code.sf.net::p/"+project+"/"+tool['mount_point']+" .\n")
+                    print "rsync -av "+project+".cvs.sourceforge.net/cvsroot/"+project+"/* ."
+                    outfile.write("rsync -av "+project+".cvs.sourceforge.net/cvsroot/"+project+"/* .")
+                elif tool['name'] == "bzr":
+                    print "rsync -av "+project+".bzr.sourceforge.net::bzrroot/"+project+"/* ."
+                    outfile.write("rsync -av "+project+".bzr.sourceforge.net::bzrroot/"+project+"/* .")
         except AttributeError:
             print "Couldn't get SCM"
 
