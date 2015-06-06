@@ -18,14 +18,22 @@ if not options.jsonlogdir:
     options.ignorelocal = True
     options.writecache = False
 
+if not options.actions:
+    print "Defaulting to running getSCM() only"
+    actions = ["SCM"]
+elif options.actions == 'none':
+    if not options.writecache:
+        print 'Doing no actions makes no sense without writing to the cache!'
+        quit(1)
+    print 'Doing no actions, just writing to the cache'
+    actions = []
+else:
+    actions = options.actions.split(",")
+
 if not options.out:
     #TODO: Generate output file name based on input file name and actions
     print "You did not specify an output file, I don't know where to go..."
     quit(1)
-
-if not options.actions:
-    print "Defaulting to running getSCM() only"
-    options.actions = "SCM"
 
 sums = {}
 
@@ -89,11 +97,11 @@ class sourceforge:
             if options.writecache:
                 if not os.path.isdir(baselogdir):
                     os.mkdir(baselogdir)
-                newreply = json.dumps(j)
+                newreply = json.dumps(j, sort_keys=True)+"\n"
                 if jsonreply != newreply:
                     print "Updating cache for "+urlpath
                     with open(logpath,'w') as jsonlog:
-                        jsonlog.write(json.dumps(j)+"\n")
+                        jsonlog.write(newreply)
             return j
         except ValueError as e:
             print "JSON failed for "+url
@@ -140,7 +148,7 @@ with open(options.out,'w') as outfile:
                 if startReached and not endReached:
                     test = sourceforge(site, outfile)
                     if test.item:
-                        for x in options.actions.split(","):
+                        for x in actions:
                             print 'Running get'+x+"()"
                             getattr(test, "get"+x.strip())()
             except IndexError as e:
