@@ -8,6 +8,7 @@ parser.add_option("-e", "--end", dest="end", default=False, help="projet name to
 parser.add_option("-o", "--out", dest="out", help="output file")
 parser.add_option("-l", "--log", dest="jsonlogdir", help="JSON log directory, for caching replies")
 parser.add_option("-i", "--ignorelocal", action="store_true", dest="ignorelocal", default=False, help="ignore the presence of any local JSON log")
+parser.add_option("-r", "--ignoreremote", action="store_true", dest="ignoreremote", default=False, help="only use the local JSON log")
 parser.add_option("-w", "--writecache", action="store_true", dest="writecache", default=False, help="write to the local JSON log")
 parser.add_option("-a", "--actions", dest="actions", help="comma separated list of data to extract")
 
@@ -70,6 +71,14 @@ class sourceforge:
             print "Couldn't get SCM"
             raise e
 
+    def getToolCounts(self):
+        for tool in self.item.get('tools',[]):
+            sums.setdefault(tool['name'], 0)
+            sums[tool['name']] += 1
+
+    def finishToolCounts(self):
+        self.print_sums()
+
     def getTrackers(self):
         for tool in self.item.get('tools',[]):
             if tool['name'] == 'tickets':
@@ -82,7 +91,7 @@ class sourceforge:
         sums[status] += 1
 
     def finishStatusCounts(self):
-        self.output(`sums`)
+        self.print_sums()
 
     def getByStatus(self):
         if self.item.get('status','[unknown]') == args[0]:
@@ -98,6 +107,9 @@ class sourceforge:
             sums[label] += 1
 
     def finishLabelCounts(self):
+        self.print_sums()
+
+    def print_sums(self):
         self.output('\n'.join("%d: %s" % (v, k) for (k, v) in sums.items()))
 
     def load(self, path, page=1, limit=100):
@@ -106,13 +118,15 @@ class sourceforge:
         baselogdir = options.jsonlogdir+"/"+urlpath[:2].lower()
         logpath=baselogdir+"/"+urlpath.replace('/','_')+pageAndLimitSuffix(page, limit)+".json"
         url = "http://sourceforge.net/rest/p/%s?page=%d&limit=%d" % (urlpath, page, limit)
-        if options.ignorelocal:
+        if options.ignorelocal and not options.ignoreremote:
             print "Ignoring any caching, checking online for " + url
             jsonreply = self.urlReq(url)
         else:
             try:
                 jsonreply = open(logpath).read()
             except IOError:
+                if options.ignoreremote:
+                    raise IOError("Unable to open json log:"+logpath)
                 print 'Unable to open json log, checking online for '+url
                 jsonreply = self.urlReq(url)
         try:
