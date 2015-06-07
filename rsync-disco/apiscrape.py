@@ -71,6 +71,21 @@ class sourceforge:
             print "Couldn't get SCM"
             raise e
 
+    def getFindFirst(self):
+        for tool in self.item.get('tools',[]):
+            if tool['name'] == args[0]:
+                print self.project
+                quit(0)
+
+    def getToolMountPoints(self):
+        for tool in self.item.get('tools',[]):
+            sums.setdefault(tool['name'], {}).setdefault(tool['mount_point'], 0)
+            sums[tool['name']][tool['mount_point']] += 1
+
+    def finishToolMountPoints(self):
+        self.output('\n'.join("\n".join("%s : %d : %s" % (k, v2, k2) for (k2, v2) in v.items()) for (k, v) in sums.items()))
+
+
     def getToolCounts(self):
         for tool in self.item.get('tools',[]):
             sums.setdefault(tool['name'], 0)
@@ -84,6 +99,10 @@ class sourceforge:
             if tool['name'] == 'tickets':
                 tracker = self.load(tool['mount_point'], limit=1)
                 self.output("%s/%s: %d" % (self.project, tool['mount_point'], tracker['count']))
+
+    def getUnavailable(self):
+        if not self.item.get('status'):
+            self.output('project:'+self.project)
 
     def getStatusCounts(self):
         status = self.item.get('status','[unknown]')
@@ -196,10 +215,11 @@ with open(options.filename,'r') as infile:
             site = sites[n]
             print '%d/%d (%d%%): Processing %s' % (n, length, int(100*n/length), site)
             test = sourceforge(site)
-            if test.item:
+            if test.item or 'Unavailable' in actions:
                 for x in actions:
                     print 'Running get'+x+"()"
                     getattr(test, "get"+x.strip())()
+
 
         for x in actions:
             finisher=getattr(test, "finish"+x.strip(), None)
