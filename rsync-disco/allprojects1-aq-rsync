@@ -18190,6 +18190,7 @@ rsync -av git.code.sf.net::p/umlm1miage/code.git .
 rsync -av rsync://uml-manager.cvs.sourceforge.net/cvsroot/uml-manager/* .
 rsync -av rsync://umlmda.cvs.sourceforge.net/cvsroot/umlmda/* .
 rsync -av svn.code.sf.net::p/umlmda/code .
+rsync -av svn.code.sf.net::p/umlmiage/code .
 rsync -av svn.code.sf.net::p/umlmodeler/svncode .
 rsync -av rsync://umlmodeller.cvs.sourceforge.net/cvsroot/umlmodeller/* .
 rsync -av git.code.sf.net::p/umlndiayeshe/code.git .
