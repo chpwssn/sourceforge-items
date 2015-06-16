@@ -71,6 +71,23 @@ class sourceforge:
             print "Couldn't get SCM"
             raise e
 
+    def getSCMForTracker(self):
+        try:
+            for tool in self.item.get('tools', []):
+                if tool['name'] == "git":
+                    self.output("git:"+self.project+":"+tool['mount_point'])
+                elif tool['name'] == "svn":
+                    self.output("svn:"+self.project+":"+tool['mount_point'])
+                elif tool['name'] == "hg":
+                    self.output("hg:"+self.project+":"+tool['mount_point'])
+                elif tool['name'] == "cvs":
+                    self.output("cvs:"+self.project+":"+tool['mount_point'])
+                elif tool['name'] == "bzr":
+                    self.output("bzr:"+self.project+":"+self.project)
+        except AttributeError as e:
+            print "Couldn't get SCM"
+            raise e
+
     def getFindFirst(self):
         for tool in self.item.get('tools',[]):
             if tool['name'] == args[0]:
